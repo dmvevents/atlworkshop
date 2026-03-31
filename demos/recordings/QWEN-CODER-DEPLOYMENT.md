@@ -233,3 +233,30 @@ kubectl describe node | grep -A5 "Allocated resources"
 ✅ **Resource Usage**: 1 GPU, 14GB VRAM, efficient
 
 The deployment is ready for workshop demos and testing!
+
+---
+
+## Deploying Larger Models (24B-32B)
+
+To deploy SWE-bench specialized models (Devstral-Small-24B or DeepSWE-32B), 
+you need a HuggingFace token to avoid rate limiting on large model downloads.
+
+### Step 1: Create HF Token Secret
+
+```bash
+kubectl create secret generic hf-token-secret \
+  -n workshop \
+  --from-literal=HUGGING_FACE_HUB_TOKEN=<YOUR_HF_TOKEN>
+```
+
+### Step 2: Deploy with Token
+
+Add `envFromSecret: hf-token-secret` to the DGD worker spec.
+
+### Recommended Models (SWE-bench Verified)
+
+| Model | Size | SWE-bench | GPUs Needed |
+|-------|------|-----------|-------------|
+| Devstral-Small-2505 | 24B | 46.6% | 2x A100 (TP=2) |
+| DeepSWE-Preview | 32.8B | 59.0% | 2x A100 (TP=2) |
+| Skywork-SWE-32B | 32B | 47.0% | 2x A100 (TP=2) |
