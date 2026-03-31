@@ -1,0 +1,37 @@
+// TEMPLATE-MARKER: backend
+// Backend: d2h_ring_fi_send — Host staging copy path (current default)
+//
+// GPU data is copied to a host-pinned staging buffer via cudaMemcpyAsync,
+// then fi_writemsg (or fi_send) posts from the host buffer.
+// Avoids DMA-BUF complexity but adds a D2H copy per chunk.
+//
+// Replaces: bolt_post_write() data-movement section in bolt_worker.cpp
+
+// ---- Data movement: Host staging copy ----
+// src_offset is absolute GPU VA; we copy to host staging first.
+
+    void *src;
+    uint64_t gpu_base = (uint64_t)ctx->gpu_buffer;
+    uint64_t src_rel = src_offset - gpu_base;
+
+    // Host staging path: async copy GPU -> host
+    cudaStream_t stream = (cudaStream_t)ctx->cuda_stream;
+    cudaError_t cerr = cudaMemcpyAsync(
+        (char*)ctx->staging_buffer + src_rel,
+        (void*)src_offset,   // absolute GPU VA
+        length, cudaMemcpyDeviceToHost, stream);
+    if (cerr != cudaSuccess) {
+        fprintf(stderr, "[BOLT-STAGING GPU%d] cudaMemcpyAsync FAILED: %s\n",
+                ctx->gpu_id, cudaGetErrorString(cerr));
+        return -1;
+    }
+
+    cerr = cudaStreamSynchronize(stream);
+    if (cerr != cudaSuccess) {
+        fprintf(stderr, "[BOLT-STAGING GPU%d] cudaStreamSynchronize FAILED: %s\n",
+                ctx->gpu_id, cudaGetErrorString(cerr));
+        return -1;
+    }
+    src = (char*)ctx->staging_buffer + src_rel;
+
+// TEMPLATE-MARKER-END: backend

@@ -1,0 +1,23 @@
+// TEMPLATE-MARKER: backend
+// Backend: d2h_ring_fi_write — DMA-BUF direct path (no staging copy)
+//
+// GPU data stays in place; EFA NIC reads GPU memory directly via DMA-BUF.
+// Requires: cuMemGetHandleForAddressRange for DMA-BUF fd export,
+//           fi_mr_regattr with FI_HMEM_CUDA for GPU memory region.
+//
+// Replaces: bolt_post_write() data-movement section in bolt_worker.cpp
+
+// ---- Data movement: DMA-BUF zero-copy ----
+// src_offset is an absolute GPU VA; MR was registered with FI_HMEM_CUDA
+// so the EFA provider can DMA-read from GPU memory directly.
+
+    void *src;
+    // DMA-BUF fast path: pass absolute GPU VA directly to fi_writemsg.
+    // The memory region was registered with fi_mr_regattr using
+    // FI_HMEM_CUDA | FI_MR_DMABUF, so the provider handles PCIe DMA.
+    src = (void*)src_offset;
+
+    // No cudaMemcpy needed — NIC reads GPU memory via peer-direct DMA.
+    // This eliminates the D2H copy latency entirely.
+
+// TEMPLATE-MARKER-END: backend

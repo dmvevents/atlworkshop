@@ -1,0 +1,23 @@
+recovery:
+  min_stuck_cycles: 3          # Trigger after 3 consecutive stuck cycles
+  max_candidates_per_run: 6    # Don't try more than 6 alternatives
+  eval_levels: ["L0", "L1"]    # Default: compile-only (fast)
+  full_eval_threshold: 5       # After 5 stuck cycles, try L2 verify too
+  auto_deploy: false           # Don't auto-deploy by default
+  cooldown_cycles: 10          # Don't re-trigger for 10 cycles after a recovery attempt
+
+  # Current deployed config (update when config changes)
+  current_config:
+    backend: "d2h_ring_fi_send"
+    placement: "split_put_wait"
+    sync: "d2h_ring"
+    issuer: "multi_warp"
+    granularity: "per_expert_batch"
+
+  tried_alternatives: []       # Populated at runtime
+
+  # Paths
+  design_space_yaml: "<HPC_STACK_ROOT>/cuco-codesign/design-space/culink-efa.yaml"
+  templates_dir: "<HPC_STACK_ROOT>/supervisor/recovery-templates"
+  workspace: "<HPC_STACK_ROOT>/supervisor/recovery-workspace"
+  reports_dir: "<HPC_STACK_ROOT>/supervisor/recovery-reports"

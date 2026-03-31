@@ -1,0 +1,34 @@
+// TEMPLATE-MARKER: backend
+// Backend: staging_copy_bulk — Bulk staging copy path
+//
+// GPU kernel copies all data to host-pinned staging in one pass.
+// CPU proxy then bulk-posts fi_writemsg from host memory.
+// High initial latency but good throughput for large transfers.
+//
+// Replaces: bolt_post_write() data-movement section in bolt_worker.cpp
+
+// ---- Data movement: Bulk staging copy ----
+// Assumes the entire dispatch buffer has already been staged
+// to ctx->staging_buffer by a prior cudaMemcpy of the full buffer.
+// This function only selects the appropriate offset.
+
+    void *src;
+    uint64_t gpu_base = (uint64_t)ctx->gpu_buffer;
+    uint64_t src_rel = src_offset - gpu_base;
+
+    // Bulk staging: data is already in host memory (copied by the
+    // coordinator thread before dispatching individual chunks).
+    // Verify the staging is complete before reading.
+    if (!ctx->staging_complete) {
+        // Wait for the bulk copy to finish
+        cudaError_t cerr = cudaStreamSynchronize((cudaStream_t)ctx->cuda_stream);
+        if (cerr != cudaSuccess) {
+            fprintf(stderr, "[BOLT-BULK GPU%d] Bulk staging sync FAILED: %s\n",
+                    ctx->gpu_id, cudaGetErrorString(cerr));
+            return -1;
+        }
+        ctx->staging_complete = true;
+    }
+    src = (char*)ctx->staging_buffer + src_rel;
+
+// TEMPLATE-MARKER-END: backend

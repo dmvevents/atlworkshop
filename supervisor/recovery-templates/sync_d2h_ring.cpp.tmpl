@@ -1,0 +1,46 @@
+// TEMPLATE-MARKER: sync
+// Sync: d2h_ring — D2H ring buffer head/tail synchronization
+//
+// GPU writes structured descriptors to a host-pinned ring buffer.
+// Ring head/tail pointers provide implicit ordering. CPU proxy drains
+// the ring in FIFO order. Natural batching of multiple descriptors.
+// Latency: ~800ns. Ordering: producer-consumer with memory barriers.
+//
+// Replaces: signal polling section in bolt_worker_loop()
+
+// ---- GPU-to-CPU sync: D2H ring buffer drain ----
+// ctx->d2h_ring is a host-pinned ring buffer with:
+//   - ring->tail: written by GPU (__threadfence_system + volatile store)
+//   - ring->head: written by CPU after processing
+//   - ring->slots[]: descriptor entries
+
+    // Read the ring tail (GPU advances it after writing a descriptor).
+    uint32_t tail = __atomic_load_n(&ctx->d2h_ring->tail, __ATOMIC_ACQUIRE);
+    uint32_t head = ctx->d2h_ring->head;
+
+    if (head == tail) continue;  // Ring empty
+
+    // Drain all available descriptors in FIFO order
+    while (head != tail) {
+        bolt_ring_entry_t *entry = &ctx->d2h_ring->slots[head % ctx->d2h_ring->capacity];
+
+        int dest         = entry->dest_rank;
+        uint32_t num_tokens  = entry->num_tokens;
+        uint32_t total_bytes = entry->total_bytes;
+        uint64_t src_off     = entry->src_offset;
+        uint64_t dst_off     = entry->dst_offset;
+
+        // Post fi_writemsg for this descriptor
+        int ret = bolt_post_write(ctx, dest, src_off, dst_off, total_bytes, true);
+        if (ret != 0) {
+            fprintf(stderr, "[BOLT-RING GPU%d] post_write failed for ring entry dest=%d\n",
+                    ctx->gpu_id, dest);
+        }
+
+        head++;
+    }
+
+    // Advance head so GPU knows slots are free
+    __atomic_store_n(&ctx->d2h_ring->head, head, __ATOMIC_RELEASE);
+
+// TEMPLATE-MARKER-END: sync

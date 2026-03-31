@@ -1,0 +1,38 @@
+// TEMPLATE-MARKER: sync
+// Sync: gdrcopy_mmio — GDRCopy MMIO signal read
+//
+// CPU reads a GPU-side flag directly via GDRCopy MMIO mapping.
+// No host-pinned memory needed for GPU->CPU signaling direction.
+// Very low latency (~200ns) but requires gdrdrv kernel module.
+//
+// Replaces: signal polling section in bolt_worker_loop()
+
+// ---- GPU-to-CPU sync: GDRCopy MMIO read ----
+// ctx->gdr_signal_map is a GDRCopy mapping of the GPU-side dispatch
+// signal array. CPU reads directly from GPU memory via BAR1 MMIO.
+// GPU writes with __threadfence_system() to ensure visibility.
+
+    // Read the dispatch-ready flag directly from GPU memory via GDRCopy.
+    // The signal struct is at a known offset in the GPU signal buffer.
+    volatile bolt_dispatch_signal_t *sig =
+        (volatile bolt_dispatch_signal_t*)((char*)ctx->gdr_signal_map + dest * sizeof(bolt_dispatch_signal_t));
+
+    // MMIO read of the ready flag — no host-pinned memory involved.
+    // GDRCopy guarantees coherent read after GPU's __threadfence_system().
+    uint8_t ready = sig->ready;
+    if (!ready) continue;
+
+    // Read payload from GPU memory via MMIO
+    // A memory fence after the ready flag ensures we see consistent data.
+    __sync_synchronize();
+    uint32_t num_tokens  = sig->num_tokens;
+    uint32_t total_bytes = sig->total_bytes;
+    uint64_t src_off     = sig->src_offset;
+    uint64_t dst_off     = sig->dst_offset;
+
+    // Clear the ready flag in GPU memory so GPU knows we consumed it.
+    // Write-back via GDRCopy MMIO.
+    sig->ready = 0;
+    __sync_synchronize();
+
+// TEMPLATE-MARKER-END: sync

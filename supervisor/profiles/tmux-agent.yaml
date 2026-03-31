@@ -1,0 +1,205 @@
+# Generic tmux Agent Supervisor Profile
+# Watches a tmux session for a Claude Code agent, detects common
+# stuck states via pattern matching, and sends helpful suggestions.
+# No HPC dependencies -- works for any Claude Code agent.
+
+name: tmux-agent
+description: "Generic tmux-based Claude Code agent supervisor"
+
+collector:
+  type: tmux
+  session: main
+  capture_lines: 500
+  patterns:
+    # Agent activity indicators
+    agent_prompt: "\\$|>|claude>"
+    tool_calls: "Tool:|Running:|Executing:"
+    errors: "Error:|ERROR:|error:|FAIL|failed|exception"
+    warnings: "Warning:|WARN:|warning:"
+    waiting: "Waiting|waiting|polling|Polling"
+    thinking: "Thinking|thinking\\.\\.\\."
+    completed: "Done|done|Complete|complete|Success|success|PASS"
+    # Resource issues
+    oom: "out of memory|OOM|MemoryError|ENOMEM"
+    timeout: "timeout|Timeout|TIMEOUT|timed out"
+    permission: "Permission denied|EACCES|EPERM"
+    not_found: "not found|No such file|ENOENT|command not found"
+    # Git states
+    git_conflict: "CONFLICT|merge conflict|Merge conflict"
+    git_dirty: "Changes not staged|modified:|Untracked files"
+    # Build states
+    build_error: "Build failed|compilation error|SyntaxError|TypeError"
+    test_fail: "FAIL|tests? failed|AssertionError"
+
+classifier:
+  type: rule_based
+  default_state: WORKING
+  rules:
+    - state: IDLE
+      conditions:
+        - {metric: _raw_empty, op: "==", value: true}
+    - state: ERROR_OOM
+      conditions:
+        - {metric: oom, op: ">", value: 0}
+    - state: ERROR_TIMEOUT
+      conditions:
+        - {metric: timeout, op: ">", value: 0}
+        - {metric: completed, op: "==", value: 0}
+    - state: ERROR_PERMISSION
+      conditions:
+        - {metric: permission, op: ">", value: 0}
+    - state: ERROR_NOT_FOUND
+      conditions:
+        - {metric: not_found, op: ">", value: 0}
+        - {metric: completed, op: "==", value: 0}
+    - state: BUILD_FAILED
+      conditions:
+        - {metric: build_error, op: ">", value: 0}
+    - state: TESTS_FAILING
+      conditions:
+        - {metric: test_fail, op: ">", value: 0}
+    - state: GIT_CONFLICT
+      conditions:
+        - {metric: git_conflict, op: ">", value: 0}
+    - state: COMPLETED
+      conditions:
+        - {metric: completed, op: ">", value: 0}
+        - {metric: errors, op: "==", value: 0}
+    - state: HAS_ERRORS
+      conditions:
+        - {metric: errors, op: ">", value: 0}
+    - state: HAS_WARNINGS
+      conditions:
+        - {metric: warnings, op: ">", value: 0}
+        - {metric: errors, op: "==", value: 0}
+    - state: WAITING
+      conditions:
+        - {metric: waiting, op: ">", value: 0}
+
+escalation:
+  steps:
+    - {name: OBSERVE, threshold: 0, action: observe}
+    - {name: DIAGNOSE, threshold: 3, action: diagnose}
+    - {name: SUGGEST, threshold: 5, action: suggest}
+    - {name: RECOVER, threshold: 8, action: recover}
+    - {name: ESCALATE, threshold: 12, action: escalate, cooldown: 15}
+  no_escalate_states:
+    - COMPLETED
+    - WORKING
+    - IDLE
+
+advisor:
+  type: rule_based
+  state_map:
+    ERROR_OOM:
+      dimension: memory
+      suggestions:
+        - {value: "reduce batch size", description: "Lower memory consumption by reducing batch/chunk size"}
+        - {value: "increase swap", description: "Add swap space or increase memory limits"}
+        - {value: "stream processing", description: "Switch to streaming/incremental processing"}
+      rationale: "Out of memory detected. System needs more memory or lower consumption."
+      checks:
+        - "Check available memory with 'free -h'"
+        - "Check process memory with 'ps aux --sort=-%mem | head'"
+        - "Check for memory leaks in recent changes"
+    ERROR_TIMEOUT:
+      dimension: latency
+      suggestions:
+        - {value: "increase timeout", description: "Raise the timeout threshold"}
+        - {value: "optimize operation", description: "Profile and optimize the slow operation"}
+        - {value: "add retry", description: "Add retry with exponential backoff"}
+      rationale: "Operation timed out. Either the timeout is too short or the operation is too slow."
+      checks:
+        - "Check network connectivity"
+        - "Check disk I/O with 'iostat'"
+        - "Profile the slow path"
+    ERROR_PERMISSION:
+      dimension: access
+      suggestions:
+        - {value: "fix permissions", description: "chmod/chown the target file or directory"}
+        - {value: "use sudo", description: "Run with elevated privileges if appropriate"}
+      rationale: "Permission denied. Check file/directory ownership and permissions."
+      checks:
+        - "Run 'ls -la' on the target path"
+        - "Check current user with 'whoami'"
+        - "Check group membership with 'groups'"
+    ERROR_NOT_FOUND:
+      dimension: dependency
+      suggestions:
+        - {value: "install missing tool", description: "Install the missing command or package"}
+        - {value: "fix path", description: "Correct the file path or add to PATH"}
+      rationale: "File or command not found. A dependency may be missing."
+      checks:
+        - "Check PATH with 'echo $PATH'"
+        - "Search for the command with 'which' or 'command -v'"
+        - "Check if package needs installing"
+    BUILD_FAILED:
+      dimension: build
+      suggestions:
+        - {value: "fix syntax", description: "Review and fix the syntax/type error"}
+        - {value: "clean rebuild", description: "Clean build artifacts and rebuild from scratch"}
+        - {value: "check deps", description: "Verify dependencies are installed and compatible"}
+      rationale: "Build failed. Check compiler/interpreter errors."
+      checks:
+        - "Review the full build error output"
+        - "Check if deps changed recently"
+        - "Try a clean build"
+    TESTS_FAILING:
+      dimension: correctness
+      suggestions:
+        - {value: "fix failing test", description: "Debug and fix the failing test case"}
+        - {value: "update snapshots", description: "Update test snapshots if output format changed"}
+        - {value: "check test deps", description: "Ensure test fixtures and mocks are up to date"}
+      rationale: "Tests are failing. Check test output for assertion details."
+      checks:
+        - "Run the specific failing test with verbose output"
+        - "Check if test fixtures need updating"
+        - "Diff expected vs actual output"
+    GIT_CONFLICT:
+      dimension: vcs
+      suggestions:
+        - {value: "resolve conflicts", description: "Manually resolve merge conflicts in affected files"}
+        - {value: "abort and retry", description: "Abort the merge/rebase and try a different strategy"}
+      rationale: "Git merge conflict detected. Manual resolution required."
+      checks:
+        - "Run 'git status' to see conflicting files"
+        - "Run 'git diff' to see conflict markers"
+    HAS_ERRORS:
+      dimension: runtime
+      suggestions:
+        - {value: "review errors", description: "Check the error messages and stack traces"}
+        - {value: "add logging", description: "Add more logging around the error path"}
+      rationale: "Runtime errors detected. Review error output for details."
+      checks:
+        - "Check the full error message and stack trace"
+        - "Look for patterns in error frequency"
+
+recovery:
+  type: playbook
+  playbooks:
+    BUILD_FAILED:
+      - action: command
+        value: "rm -rf build dist node_modules/.cache"
+        description: "Clean build artifacts"
+      - action: command
+        value: "npm install"
+        description: "Reinstall dependencies"
+      - action: command
+        value: "npm run build"
+        description: "Rebuild from clean state"
+    GIT_CONFLICT:
+      - action: directive
+        value: "Run 'git status' to identify conflicting files, then resolve each conflict"
+        description: "Guide through conflict resolution"
+    ERROR_OOM:
+      - action: directive
+        value: "Reduce processing scope or add pagination/streaming"
+        description: "Suggest memory reduction strategy"
+
+delivery:
+  type: tmux
+  session: main
+
+state:
+  path: /tmp/supervisor-tmux-agent-state.json
+  history_path: /tmp/supervisor-tmux-agent-history.jsonl

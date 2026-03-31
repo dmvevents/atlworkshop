@@ -1,0 +1,40 @@
+// TEMPLATE-MARKER: backend
+// Backend: gdrcopy_mmio — GDRCopy MMIO read path
+//
+// CPU proxy reads GPU memory directly via GDRCopy BAR1 mapping.
+// No cudaMemcpy or DMA-BUF needed. Very low latency for small payloads
+// (<4KB) but poor throughput for large transfers.
+//
+// Requires: gdrdrv kernel module loaded, gdr_open/gdr_pin_buffer/gdr_map
+//           for the GPU dispatch buffer.
+//
+// Replaces: bolt_post_write() data-movement section in bolt_worker.cpp
+
+// ---- Data movement: GDRCopy MMIO read ----
+// src_offset is absolute GPU VA; we read it via the GDRCopy mapping.
+
+    void *src;
+    uint64_t gpu_base = (uint64_t)ctx->gpu_buffer;
+    uint64_t src_rel = src_offset - gpu_base;
+
+    // GDRCopy path: CPU reads GPU memory directly via MMIO BAR1 mapping.
+    // ctx->gdr_map_base was obtained from gdr_map() during bolt_init().
+    // The mapping covers the entire gpu_buffer region.
+    void *gdr_src = (char*)ctx->gdr_map_base + src_rel;
+
+    // Copy from GDRCopy mapping to host staging buffer.
+    // gdr_copy_from_mapping handles alignment and write-combining.
+    int gdr_ret = gdr_copy_from_mapping(
+        ctx->gdr_handle,
+        (char*)ctx->staging_buffer + src_rel,  // destination: host staging
+        gdr_src,                                // source: GDRCopy mapping
+        length
+    );
+    if (gdr_ret != 0) {
+        fprintf(stderr, "[BOLT-GDRCOPY GPU%d] gdr_copy_from_mapping FAILED: %d\n",
+                ctx->gpu_id, gdr_ret);
+        return -1;
+    }
+    src = (char*)ctx->staging_buffer + src_rel;
+
+// TEMPLATE-MARKER-END: backend

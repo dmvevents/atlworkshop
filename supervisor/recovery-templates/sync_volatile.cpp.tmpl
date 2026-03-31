@@ -1,0 +1,30 @@
+// TEMPLATE-MARKER: sync
+// Sync: host_pinned_volatile — Host-pinned volatile flag polling
+//
+// GPU writes to a volatile host-pinned flag visible to CPU via PCIe
+// coherency. CPU spins on the flag. Simple and low latency (~500ns)
+// for coarse-grained signaling.
+//
+// Replaces: signal polling section in bolt_worker_loop()
+
+// ---- GPU-to-CPU sync: volatile flag polling ----
+// ctx->host_dispatch_signals[dest].ready is a volatile uint8_t in
+// host-pinned memory allocated with cudaHostAlloc(cudaHostAllocMapped).
+// GPU writes it with a __threadfence_system() barrier; CPU reads it
+// directly via PCIe coherency.
+
+    // Poll the volatile ready flag — no atomics needed on x86 for
+    // aligned single-byte reads, but we use __atomic_load for portability.
+    uint8_t ready = __atomic_load_n(
+        (volatile uint8_t*)&ctx->host_dispatch_signals[dest].ready,
+        __ATOMIC_ACQUIRE);
+    if (!ready) continue;
+
+    // Read signal payload after the acquire fence ensures we see
+    // the GPU's stores to num_tokens/total_bytes/src_offset/dst_offset.
+    uint32_t num_tokens  = ctx->host_dispatch_signals[dest].num_tokens;
+    uint32_t total_bytes = ctx->host_dispatch_signals[dest].total_bytes;
+    uint64_t src_off     = ctx->host_dispatch_signals[dest].src_offset;
+    uint64_t dst_off     = ctx->host_dispatch_signals[dest].dst_offset;
+
+// TEMPLATE-MARKER-END: sync

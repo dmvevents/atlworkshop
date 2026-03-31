@@ -1,0 +1,102 @@
+# EFA Transport Supervisor Profile
+# Monitors DeepEP Transport layer on Kubernetes pods.
+# Uses kubectl log collection, rule-based state classification,
+# CUCo design-space advisor, and evolution-guided recovery.
+
+name: bolt-efa
+description: "EFA transport supervisor for DeepEP dispatch/combine"
+
+collector:
+  type: kubectl
+  namespace: gpu-transport
+  pod: workload-pod-0
+  patterns:
+    bolt_init: "\\[BOLT\\]"
+    bolt_workers: "BOLT-WORKER.*started"
+    bolt_peers:
+      pattern: "peers=(\\d+)"
+      extract: last_group1
+    bolt_c0: "BOLT-C0"
+    bolt_dispatch: "BOLT-WORKER.*Dispatch"
+    bolt_tx: "BOLT-TX"
+    bolt_staging: "BOLT-STAGING"
+    cuda_context_ok: "CUDA context OK"
+    cuda_stream_ok: "CUDA stream created"
+    diag_f: "DIAG-F"
+    passed:
+      pattern: "Passed:\\s+(\\d+)"
+      extract: last_group1
+    timeout: "timeout.*dispatch|sender timeout"
+
+classifier:
+  type: rule_based
+  default_state: UNKNOWN
+  rules:
+    - state: NO_PODS
+      conditions:
+        - {metric: _raw_empty, op: "==", value: true}
+    - state: ALL_PASS
+      conditions:
+        - {metric: passed, op: ">", value: "0"}
+        - {metric: timeout, op: "==", value: 0}
+    - state: NO_BOLT
+      conditions:
+        - {metric: bolt_init, op: "==", value: 0}
+    - state: NO_WORKERS
+      conditions:
+        - {metric: bolt_workers, op: "==", value: 0}
+    - state: PEERS_MISSING
+      conditions:
+        - {metric: bolt_peers, op: "in", value: ["0", null]}
+    - state: BARRIER_WAIT
+      conditions:
+        - {metric: diag_f, op: "==", value: 0}
+    - state: C0_TIMEOUT
+      conditions:
+        - {metric: bolt_c0, op: "==", value: 0}
+        - {metric: timeout, op: ">", value: 0}
+    - state: C0_NO_WORKER
+      conditions:
+        - {metric: bolt_c0, op: ">", value: 0}
+        - {metric: bolt_dispatch, op: "==", value: 0}
+    - state: DISPATCH_NO_TX
+      conditions:
+        - {metric: bolt_dispatch, op: ">", value: 0}
+        - {metric: bolt_tx, op: "==", value: 0}
+    - state: DISPATCHING
+      conditions:
+        - {metric: bolt_tx, op: ">", value: 0}
+
+escalation:
+  steps:
+    - {name: OBSERVE, threshold: 0, action: observe}
+    - {name: DIAGNOSE, threshold: 3, action: diagnose}
+    - {name: SUGGEST, threshold: 4, action: suggest, cooldown: 0}
+    - {name: EVOLVE, threshold: 6, action: recover}
+    - {name: DEPLOY, threshold: 8, action: deploy, cooldown: 10}
+    - {name: ESCALATE, threshold: 12, action: escalate, cooldown: 20}
+  no_escalate_states:
+    - ALL_PASS
+    - BARRIER_WAIT
+    - NO_PODS
+
+advisor:
+  type: script
+  script: supervisor/cuco-advisor.py
+  args: ["--state", "{state}", "--json"]
+  timeout: 15
+
+recovery:
+  type: script
+  script: supervisor/evolution-recovery.py
+  args: ["--state", "{state}", "--stuck-cycles", "{stuck_cycles}", "--json"]
+  timeout: 120
+
+delivery:
+  type: tmux
+  session: rdma
+  inject_script: whatsapp-agents/scripts/inject-command.sh
+
+state:
+  path: supervisor/framework-state/bolt-efa-state.json
+  history_path: supervisor/framework-state/bolt-efa-history.jsonl

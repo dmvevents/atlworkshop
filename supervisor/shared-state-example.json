@@ -1,0 +1,44 @@
+{
+  "session": "session-b",
+  "cycle": 100,
+  "timestamp": "2026-03-26T15:58:22Z",
+  "state": "NO_PODS",
+  "previous_state": "NO_BOLT",
+  "same_state_cycles": 5,
+  "metrics": {
+    "bolt_init": 0,
+    "bolt_workers": 0,
+    "bolt_peers": "?",
+    "bolt_c0": 0,
+    "bolt_dispatch": 0,
+    "bolt_tx": 0,
+    "bolt_staging": 0,
+    "diag_f": 0,
+    "passed": 0,
+    "timeout": 0,
+    "cuda_context_ok": 0,
+    "cuda_stream_ok": 0
+  },
+  "escalation_level": 0,
+  "escalation_name": "OBSERVE",
+  "cuco_diagnosis": null,
+  "cuco_failing_dimension": null,
+  "cuco_suggestions": [],
+  "recovery_report": null,
+  "recovery_best_candidate": null,
+  "last_directive": "Bolt not on pods. Rebuild with USE_BOLT=1 and deploy.",
+  "last_directive_time": "2026-03-25T13:05:31Z",
+  "directives_sent": 3,
+  "tried_dimensions": [],
+  "tried_alternatives": [
+    "I=single_warp"
+  ],
+  "cooldown_until_cycle": 0,
+  "current_config": {
+    "backend": "d2h_ring_fi_send",
+    "placement": "split_put_wait",
+    "sync": "d2h_ring",
+    "issuer": "multi_warp",
+    "granularity": "per_expert_batch"
+  }
+}
