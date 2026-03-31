@@ -1,0 +1,24 @@
+{
+  "clusters": {
+    "gpu-cluster-1": {
+      "nodes": 2,
+      "gpus_per_node": 8,
+      "gpu_type": "H100 80GB",
+      "holder": null,
+      "queue": [],
+      "acquired_at": null,
+      "max_hold_min": 30,
+      "namespaces": ["project-alpha", "project-beta"]
+    },
+    "gpu-cluster-2": {
+      "nodes": 2,
+      "gpus_per_node": 8,
+      "gpu_type": "A100 40GB",
+      "holder": null,
+      "queue": [],
+      "acquired_at": null,
+      "max_hold_min": 30,
+      "namespaces": ["data-processing", "model-training"]
+    }
+  }
+}

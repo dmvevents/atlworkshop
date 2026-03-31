@@ -1,6 +1,6 @@
 # Mastering Agentic Coding & GPUs
 
-**A hands-on, 2-hour workshop focused on building, deploying, and scaling production-ready agentic systems**
+**A hands-on, 2h 10m workshop focused on building, deploying, and scaling production-ready agentic systems**
 
 ---
 
@@ -19,7 +19,7 @@ This workshop bridges two critical disciplines: **agentic AI coding systems** an
   ============================================================
 
   Part 1: Agentic Systems                Part 2: GPU Compute
-  (55 min)                               (50 min)
+  (70 min)                               (50 min)
   +--------------------------+           +--------------------------+
   | [1] Agentic Coding       |           | [5] GPU Foundations      |
   |     Fundamentals         |           |     for Developers       |
@@ -47,7 +47,14 @@ This workshop bridges two critical disciplines: **agentic AI coding systems** an
   |     Integration:         |           | [8] Scaling: Experiment  |
   |     OpenClaw + WhatsApp  |           |     to Production        |
   |     (15 min)             |           |     (5 min)              |
-  +--------------------------+           +--------------------------+
+  +-----------+--------------+           +--------------------------+
+              |                                      |
+              v                                      |
+  +--------------------------+                       |
+  | [9] Agent Supervision:   |                       |
+  |     Manager & Arbitrator |                       |
+  |     (15 min)             |                       |
+  +-----------+--------------+                       |
               |                                      |
               +------------------+-------------------+
                                  |
@@ -60,7 +67,7 @@ This workshop bridges two critical disciplines: **agentic AI coding systems** an
 
 ---
 
-## Part 1 -- Building Effective Agentic Coding Systems (55 min)
+## Part 1 -- Building Effective Agentic Coding Systems (70 min)
 
 | # | Module | Time | Description |
 |---|--------|------|-------------|
@@ -68,6 +75,7 @@ This workshop bridges two critical disciplines: **agentic AI coding systems** an
 | 2 | [MCP Servers & Multi-LLM Orchestration](modules/02-mcp-servers-multi-llm/) | 15 min | Building MCP servers, connecting 14 tools, multi-model consensus with GPT-5.4/Gemini/Claude |
 | 3 | [Deploying Coding Agents](modules/03-deploying-coding-agents/) | 10 min | Deploy Claude Code, OpenCode, and oh-my-claudecode. Parallel agents, worktree isolation, agent teams |
 | 4 | [Real-World Integration: OpenClaw + WhatsApp](modules/04-openclaw-whatsapp-integration/) | 15 min | OpenClaw gateway to WhatsApp/Slack/Discord, NemoClaw self-referential agent, Amazon Connect AI deployment |
+| 9 | [Agent Supervision: Manager & Arbitrator](modules/09-agent-supervision-manager/) | 15 min | Supervisor system for autonomous agents: escalation ladder, loop detection, multi-LLM research, cluster lock management |
 
 ## Part 2 -- Compute Foundations for Agentic Systems (50 min)
 
@@ -186,12 +194,13 @@ atlworkshop/
 | 0:15 - 0:30 | MCP Servers & Multi-LLM Orchestration | 2 |
 | 0:30 - 0:40 | Deploying Coding Agents | 3 |
 | 0:40 - 0:55 | OpenClaw + WhatsApp Integration | 4 |
-| 0:55 - 1:00 | -- Break -- | |
-| 1:00 - 1:10 | GPU Foundations for Developers | 5 |
-| 1:10 - 1:30 | Deploying NVIDIA Dynamo on EKS | 6 |
-| 1:30 - 1:45 | HPC Kernel Optimization with AI Agents | 7 |
-| 1:45 - 1:50 | Scaling: Experiment to Production | 8 |
-| 1:50 - 2:00 | Q&A and Wrap-up | |
+| 0:55 - 1:10 | Agent Supervision: Manager & Arbitrator | 9 |
+| 1:10 - 1:15 | -- Break -- | |
+| 1:15 - 1:25 | GPU Foundations for Developers | 5 |
+| 1:25 - 1:45 | Deploying NVIDIA Dynamo on EKS | 6 |
+| 1:45 - 2:00 | HPC Kernel Optimization with AI Agents | 7 |
+| 2:00 - 2:05 | Scaling: Experiment to Production | 8 |
+| 2:05 - 2:10 | Q&A and Wrap-up | |
 
 ---
 

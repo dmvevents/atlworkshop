@@ -1,0 +1,37 @@
+{
+  "sessions": {
+    "session-a": {
+      "project": "Frontend refactoring",
+      "directory": "/home/user/projects/frontend",
+      "namespace": "",
+      "state": "UNKNOWN",
+      "stuck_count": 0,
+      "last_activity": "",
+      "last_directive": "",
+      "capabilities": ["build", "test", "lint"],
+      "priority": 1
+    },
+    "session-b": {
+      "project": "API optimization",
+      "directory": "/home/user/projects/api",
+      "namespace": "api-staging",
+      "state": "UNKNOWN",
+      "stuck_count": 0,
+      "last_activity": "",
+      "last_directive": "",
+      "capabilities": ["build", "test", "deploy", "gpu"],
+      "priority": 2
+    },
+    "session-c": {
+      "project": "Data pipeline",
+      "directory": "/home/user/projects/pipeline",
+      "namespace": "data-processing",
+      "state": "UNKNOWN",
+      "stuck_count": 0,
+      "last_activity": "",
+      "last_directive": "",
+      "capabilities": ["build", "test", "deploy"],
+      "priority": 3
+    }
+  }
+}

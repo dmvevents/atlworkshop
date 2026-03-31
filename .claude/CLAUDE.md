@@ -9,7 +9,7 @@ It covers building, deploying, and scaling production-ready agentic systems with
 
 ```
 atlworkshop/
-├── modules/                    # 8 workshop modules (Part 1: 1-4, Part 2: 5-8)
+├── modules/                    # 9 workshop modules (Part 1: 1-4, Part 1.5: 9, Part 2: 5-8)
 │   ├── 01-agentic-coding-fundamentals/
 │   ├── 02-mcp-servers-multi-llm/
 │   ├── 03-deploying-coding-agents/
@@ -17,11 +17,14 @@ atlworkshop/
 │   ├── 05-gpu-foundations/
 │   ├── 06-dynamo-inference-eks/
 │   ├── 07-hpc-kernel-optimization/
-│   └── 08-scaling-production/
+│   ├── 08-scaling-production/
+│   └── 09-agent-supervision-manager/
 ├── demos/
 │   ├── scripts/                # Executable demo scripts (00-preflight through 99-teardown)
 │   ├── manifests/              # K8s deployment manifests
-│   └── recordings/             # Pre-recorded demos (asciinema)
+│   ├── nemoclaw/               # NemoClaw self-referential agent
+│   ├── manager/                # Manager + Arbitrator supervision system
+│   └── recordings/             # Pre-recorded demos and benchmark results
 ├── reference/
 │   ├── skills-examples/        # Example skill files for attendees
 │   ├── mcp-configs/            # MCP server configuration examples
@@ -51,6 +54,8 @@ Use them for reference, deeper examples, and deployment configurations:
 | oh-my-claudecode | /home/ubuntu/oh-my-claudecode/ | Multi-agent orchestration for Claude Code |
 | Superpowers | /home/ubuntu/superpowers/ | Skills-based development workflows |
 | EFA/NCCL Docs | /home/ubuntu/efa-nccl-doc/ | EFA networking documentation |
+| Manager | /home/ubuntu/manager/ | Multi-session supervisor with lock management |
+| Arbitrator | /home/ubuntu/deepep-intergration/hpc-agent-stack/supervisor/ | Escalation engine, evolution recovery |
 
 ## Autonomous Deployment Instructions
 
