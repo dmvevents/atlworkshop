@@ -1,0 +1,138 @@
+# Zoekt Server Configuration
+# Documentation: https://github.com/sourcegraph/zoekt
+#
+# Copy this file and customize for your environment:
+#   cp zoekt-config.yaml zoekt-config.local.yaml
+#
+# Environment variables can be used with ${VAR} syntax
+
+server:
+  # Address to listen on (host:port)
+  listen: ":6070"
+
+  # Directory containing Zoekt index files
+  index_dir: "${HOME}/.zoekt"
+
+  # Maximum number of search results to return
+  max_matches: 10000
+
+  # Enable request logging
+  log_requests: true
+
+  # Health check endpoint
+  health_check: "/healthz"
+
+indexing:
+  # Git branches to index by default
+  branches:
+    - "main"
+    - "master"
+    - "develop"
+
+  # Maximum file size to index (supports: B, KB, MB, GB)
+  max_file_size: "1MB"
+
+  # File patterns to exclude from indexing
+  exclude_patterns:
+    - "vendor/**"
+    - "node_modules/**"
+    - "*.min.js"
+    - "*.min.css"
+    - "*.pb.go"
+    - "**/__pycache__/**"
+    - "*.pyc"
+    - ".git/**"
+
+  # Large file handling
+  large_file_handling:
+    # Skip files larger than this
+    skip_threshold: "5MB"
+    # Truncate files between max_file_size and skip_threshold
+    truncate: true
+
+  # Ctags configuration for symbol indexing
+  ctags:
+    enabled: true
+    # Path to universal-ctags binary
+    path: "/usr/bin/ctags-universal"
+    # Alternative paths to try
+    fallback_paths:
+      - "/usr/local/bin/ctags"
+      - "/opt/homebrew/bin/ctags"
+    # Languages to extract symbols for
+    languages:
+      - "c"
+      - "c++"
+      - "go"
+      - "python"
+      - "rust"
+      - "java"
+
+# Repository configurations
+# Each repository can have custom settings
+repos:
+  # NIXL repository
+  - name: "my-project"
+    url: "file:///path/to/your-repo"
+    branches:
+      - "main"
+      - "feature-branch"
+    # Override max file size for this repo
+    max_file_size: "2MB"
+    # Custom exclude patterns
+    exclude_patterns:
+      - "build/**"
+      - "*.o"
+
+  # DeepEP repository
+  - name: "another-project"
+    url: "file:///path/to/another-repo"
+    branches:
+      - "main"
+    # Index all branches matching pattern
+    branch_pattern: "feature/*"
+
+  # Remote repository example (Git URL)
+  # - name: "linux-kernel"
+  #   url: "https://github.com/torvalds/linux.git"
+  #   branches:
+  #     - "master"
+  #   # Shallow clone to save space
+  #   shallow: true
+  #   depth: 1
+
+# Performance tuning
+performance:
+  # Number of parallel indexing workers
+  index_workers: 4
+
+  # Index shard size (number of files per shard)
+  shard_size: 100000
+
+  # Memory limit for indexing (0 = unlimited)
+  memory_limit_mb: 0
+
+  # Enable incremental indexing
+  incremental: true
+
+# Logging configuration
+logging:
+  # Log level: debug, info, warn, error
+  level: "info"
+
+  # Log format: text, json
+  format: "text"
+
+  # Log file (empty = stdout)
+  file: ""
+
+# Scheduled tasks
+schedule:
+  # Re-index interval (cron format or duration)
+  reindex_interval: "1h"
+
+  # Cleanup old index files
+  cleanup_interval: "24h"
+
+  # Keep N previous index versions
+  keep_versions: 2

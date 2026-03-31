@@ -1,0 +1,149 @@
+# RAGFlow Docker Compose Configuration
+# Based on: https://github.com/infiniflow/ragflow
+#
+# Usage:
+#   cd /path/to/hpc-agent-stack/config
+#   docker-compose -f ragflow-compose.yml up -d
+#
+# Documentation: https://ragflow.io/docs/dev/
+#
+# Note: For production use, review security settings and use
+#       proper secrets management for API keys.
+
+version: '3.8'
+
+services:
+  # RAGFlow main service
+  ragflow:
+    image: infiniflow/ragflow:latest
+    container_name: ragflow
+    restart: unless-stopped
+    ports:
+      - "9380:9380"     # Web UI and API
+      - "9381:9381"     # Metrics (optional)
+    volumes:
+      # Persistent data storage
+      - ragflow_data:/ragflow/data
+      # Custom configuration (optional)
+      - ./ragflow-config:/ragflow/conf:ro
+      # Document upload directory (optional)
+      - ragflow_uploads:/ragflow/uploads
+    environment:
+      # LLM API Configuration
+      # Supports: OpenAI, Azure OpenAI, Anthropic, local models
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4}
+
+      # Azure OpenAI (alternative)
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY:-}
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT:-}
+      - AZURE_OPENAI_DEPLOYMENT=${AZURE_OPENAI_DEPLOYMENT:-}
+
+      # Anthropic Claude (alternative)
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+
+      # Embedding model configuration
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-small}
+
+      # Application settings
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - MAX_UPLOAD_SIZE=${MAX_UPLOAD_SIZE:-100MB}
+      - CHUNK_SIZE=${CHUNK_SIZE:-512}
+      - CHUNK_OVERLAP=${CHUNK_OVERLAP:-50}
+
+      # Database settings (uses embedded SQLite by default)
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///ragflow/data/ragflow.db}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9380/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - ragflow_network
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 1G
+
+  # Optional: Elasticsearch for advanced search
+  # Uncomment if you need full-text search capabilities
+  # elasticsearch:
+  #   image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+  #   container_name: ragflow-elasticsearch
+  #   restart: unless-stopped
+  #   environment:
+  #     - discovery.type=single-node
+  #     - xpack.security.enabled=false
+  #     - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+  #   volumes:
+  #     - elasticsearch_data:/usr/share/elasticsearch/data
+  #   ports:
+  #     - "9200:9200"
+  #   networks:
+  #     - ragflow_network
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+
+  # Optional: Redis for caching
+  # Uncomment for improved performance with multiple users
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: ragflow-redis
+  #   restart: unless-stopped
+  #   volumes:
+  #     - redis_data:/data
+  #   ports:
+  #     - "6379:6379"
+  #   networks:
+  #     - ragflow_network
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
+
+  # Optional: Milvus for vector storage
+  # Uncomment for production-scale vector search
+  # milvus:
+  #   image: milvusdb/milvus:v2.3.3
+  #   container_name: ragflow-milvus
+  #   restart: unless-stopped
+  #   environment:
+  #     - ETCD_USE_EMBED=true
+  #   volumes:
+  #     - milvus_data:/var/lib/milvus
+  #   ports:
+  #     - "19530:19530"
+  #   networks:
+  #     - ragflow_network
+
+volumes:
+  ragflow_data:
+    driver: local
+  ragflow_uploads:
+    driver: local
+  # elasticsearch_data:
+  #   driver: local
+  # redis_data:
+  #   driver: local
+  # milvus_data:
+  #   driver: local
+
+networks:
+  ragflow_network:
+    driver: bridge
+
+# Example .env file contents:
+# ---
+# OPENAI_API_KEY=sk-xxx
+# OPENAI_MODEL=gpt-4
+# EMBEDDING_MODEL=text-embedding-3-small
+# LOG_LEVEL=INFO
+# MAX_UPLOAD_SIZE=100MB
