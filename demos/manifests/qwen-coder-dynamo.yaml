@@ -1,0 +1,53 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Dynamo deployment for Qwen2.5-Coder-7B-Instruct on P4d nodes
+# Single-worker, no disaggregation (simpler for workshop demo)
+
+apiVersion: nvidia.com/v1alpha1
+kind: DynamoGraphDeployment
+metadata:
+  name: qwen-coder
+  namespace: workshop
+spec:
+  services:
+    Frontend:
+      componentType: frontend
+      replicas: 1
+      extraPodSpec:
+        mainContainer:
+          image: nvcr.io/nvidia/ai-dynamo/vllm-runtime:0.9.0
+        nodeSelector:
+          node.kubernetes.io/instance-type: p4d.24xlarge
+
+    QwenCoderWorker:
+      envFromSecret: hf-token-secret
+      componentType: worker
+      replicas: 1
+      resources:
+        limits:
+          gpu: "1"
+          memory: "80Gi"
+        requests:
+          gpu: "1"
+          memory: "40Gi"
+      extraPodSpec:
+        mainContainer:
+          image: nvcr.io/nvidia/ai-dynamo/vllm-runtime:0.9.0
+          workingDir: /workspace/examples/backends/vllm
+          command:
+          - python3
+          - -m
+          - dynamo.vllm
+          args:
+            - --model
+            - Qwen/Qwen2.5-Coder-7B-Instruct
+            - --trust-remote-code
+            - --max-model-len
+            - "8192"
+            - --gpu-memory-utilization
+            - "0.85"
+            - --dtype
+            - bfloat16
+        nodeSelector:
+          node.kubernetes.io/instance-type: p4d.24xlarge

@@ -364,4 +364,232 @@ Coding agents write and execute code on your machine. Security is not optional.
 
 ---
 
+## 8. Using OpenCode with Local/Alternative Models
+
+### What is OpenCode?
+
+[OpenCode](https://opencode.ai) is an open-source coding agent that works with **any** LLM provider -- OpenAI, Anthropic, Google, Ollama (local models), OpenRouter, and more. Unlike vendor-locked tools, OpenCode gives you full control over which model powers your coding assistant.
+
+**Key characteristics:**
+- Open-source, MIT-licensed
+- Native support for multiple providers without shims or proxies
+- Local model support via Ollama (no API keys, no network required)
+- Terminal-based UI similar to Claude Code
+
+### Installation
+
+```bash
+# One-line install
+curl -fsSL https://opencode.ai/install | bash
+
+# Binary installs to ~/.opencode/bin/opencode
+# Add to PATH if not already there
+export PATH="$HOME/.opencode/bin:$PATH"
+
+# Verify
+opencode --version
+# 1.3.10
+```
+
+### OpenCode Configuration
+
+OpenCode reads its configuration from `opencode.json` in your project root. The configuration varies by provider.
+
+**Using OpenAI:**
+
+```json
+{
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "apiKey": "<YOUR_OPENAI_API_KEY>"
+}
+```
+
+**Using Anthropic:**
+
+```json
+{
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-20250514",
+  "apiKey": "<YOUR_ANTHROPIC_API_KEY>"
+}
+```
+
+**Using local models via Ollama (no API key needed):**
+
+```json
+{
+  "provider": "ollama",
+  "model": "qwen2.5-coder:7b",
+  "baseUrl": "http://localhost:11434"
+}
+```
+
+> **Tip:** For air-gapped environments or sensitive codebases, the Ollama configuration keeps everything local. No code leaves your machine.
+
+---
+
+## 9. Claude Code Router: Use Any Model with Claude Code
+
+[Claude Code Router](https://github.com/musistudio/claude-code-router) routes Claude Code requests to **any** model provider. This means you get the Claude Code agent experience (tool use, file ops, git integration) while using models from OpenAI, Google, DeepSeek, Ollama, OpenRouter, or Volcengine on the backend.
+
+### Why Use a Router?
+
+- **Cost optimization** -- route background tasks to cheaper models
+- **Model specialization** -- use reasoning models for hard problems, fast models for simple tasks
+- **Local development** -- route to Ollama for offline coding
+- **Vendor flexibility** -- switch providers without changing your workflow
+
+### Installation
+
+```bash
+npm install -g @musistudio/claude-code-router
+```
+
+### Configuration
+
+The router config lives at `~/.claude-code-router/config.json`:
+
+```json
+{
+  "Providers": [
+    {
+      "name": "openai",
+      "api_key": "<YOUR_OPENAI_API_KEY>",
+      "models": ["gpt-5.2", "gpt-4o"]
+    },
+    {
+      "name": "gemini",
+      "api_key": "<YOUR_GOOGLE_API_KEY>",
+      "models": ["gemini-3-pro", "gemini-2.5-flash"]
+    },
+    {
+      "name": "ollama",
+      "api_base_url": "http://localhost:11434/v1/chat/completions",
+      "models": ["qwen2.5-coder:latest"]
+    }
+  ],
+  "Router": {
+    "default": "openai,gpt-5.2",
+    "background": "gemini,gemini-2.5-flash",
+    "think": "openai,gpt-5.2",
+    "longContext": "gemini,gemini-3-pro"
+  }
+}
+```
+
+**Router task types:**
+- **default** -- standard coding tasks (chat, edits, file operations)
+- **background** -- automated background tasks (linting, indexing)
+- **think** -- extended reasoning (architecture, debugging complex issues)
+- **longContext** -- large file analysis, codebase-wide search (models with 1M+ context)
+
+### Usage
+
+```bash
+# Start the router proxy
+ccr start
+
+# Option A: Use the built-in command
+ccr code "refactor the auth module to use JWT"
+
+# Option B: Activate the router and use claude normally
+eval "$(ccr activate)"
+claude
+```
+
+Once activated, all `claude` commands transparently route through the configured providers.
+
+### Smart Routing Example
+
+With the config above, when you ask Claude Code to:
+- **Write a function** -- routes to `gpt-5.2` (default)
+- **Analyze a 50K-line file** -- routes to `gemini-3-pro` (longContext)
+- **Debug a race condition** -- routes to `gpt-5.2` (think)
+- **Run background indexing** -- routes to `gemini-2.5-flash` (background)
+
+---
+
+## 10. Choosing the Right Tool
+
+| Tool | Best For | Model Support | Trade-offs |
+|------|----------|---------------|------------|
+| **Claude Code (native)** | Deep agentic coding with Anthropic models | Claude only | Best agent capabilities; single vendor |
+| **Claude Code + Router** | Claude Code UX with any model | Any via routing | Full tool use; requires proxy setup |
+| **OpenCode** | Open-source alternative, any provider native | Any natively | Growing ecosystem; less mature than Claude Code |
+| **Cursor** | IDE-integrated coding, inline completions | Multiple providers | Great DX; limited agentic capabilities |
+
+**Decision framework:**
+
+1. **Need the best agentic coding?** Use Claude Code natively with Claude models.
+2. **Want Claude Code UX but with other models?** Use Claude Code + Router.
+3. **Want an open-source, vendor-neutral agent?** Use OpenCode.
+4. **Prefer IDE integration over terminal?** Use Cursor.
+5. **Need offline/air-gapped coding?** Use OpenCode or Router with Ollama.
+
+---
+
+## 9. Cluster Lock: Multi-Session GPU Coordination
+
+When multiple AI agent sessions share the same GPU cluster, you need a
+coordination mechanism to prevent resource conflicts. The **cluster lock**
+pattern solves this with a simple JSON file.
+
+### The Problem
+
+```
+Session A: "Deploy Dynamo with 8 GPUs for inference benchmarking"
+Session B: "Launch DeepEP training on all 16 GPUs"
+                  ↓ CONFLICT: Both want the same GPUs
+```
+
+### The Solution: Cluster Lock File
+
+```json
+// ~/.claude/cluster-lock.json
+{
+  "cluster_lock": {
+    "holder": "workshop-deploy",
+    "session": "atlworkshop-deploy",
+    "namespace": "workshop",
+    "acquired_at": "2026-03-31T14:00:00Z",
+    "purpose": "Deploy coding models for workshop demo",
+    "estimated_duration_min": 120,
+    "pods_running": true
+  },
+  "queue": [],
+  "last_updated": "2026-03-31T14:00:00Z"
+}
+```
+
+### Protocol
+
+1. **Before deploying any pods**: Check `holder` field
+   - If `null` -> claim the lock (write your session name)
+   - If held by someone else -> add yourself to `queue[]` and **wait**
+2. **While holding the lock**: Deploy pods, run tests, benchmark
+3. **When done**: Scale pods to 0, set `holder` to `null`, notify next in queue
+
+### Why This Matters
+
+- GPU instances cost $30-100+/hour - you can't leave pods running by accident
+- CUDA contexts are exclusive - two sessions deploying to the same GPU crash
+- Agent sessions run autonomously - without a lock, they'll deploy over each other
+- The lock file doubles as an audit trail (who used what, when, why)
+
+### Implementation in CLAUDE.md
+
+Add this to your project's CLAUDE.md:
+
+```markdown
+## Cluster Coordination
+- Check lock before deploying: `cat ~/.claude/cluster-lock.json`
+- If holder is null, claim it. If held, add to queue and WAIT.
+- Always release lock when done: scale pods to 0, set holder to null.
+```
+
+Your coding agent will automatically follow this protocol on every deployment.
+
+---
+
 **Next:** [Module 4 - OpenClaw & WhatsApp Integration](../04-openclaw-whatsapp-integration/README.md)
