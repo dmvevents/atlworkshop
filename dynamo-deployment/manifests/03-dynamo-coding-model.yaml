@@ -1,0 +1,70 @@
+# Dynamo DynamoGraphDeployment: Qwen2.5-Coder-7B-Instruct
+#
+# This is the EXACT manifest used to deploy the coding model in the workshop.
+# It creates two components via the Dynamo operator:
+#   - Frontend: HTTP API server (OpenAI-compatible, port 8000)
+#   - Worker:   vLLM inference engine with 1x GPU
+#
+# Prerequisites:
+#   - Dynamo operator installed (helm install dynamo-platform ...)
+#   - etcd + NATS running (included with dynamo-platform chart)
+#   - GPU nodes with nvidia.com/gpu resources available
+#   - Namespace 'workshop' exists
+#
+# Usage:
+#   kubectl apply -f 01-namespace.yaml
+#   kubectl apply -f 03-dynamo-coding-model.yaml
+#   kubectl get pods -n workshop -w  # wait for Running
+#   kubectl port-forward -n workshop svc/qwen-coder-frontend 8000:8000
+#   curl http://localhost:8000/v1/models
+#
+apiVersion: nvidia.com/v1alpha1
+kind: DynamoGraphDeployment
+metadata:
+  name: qwen-coder
+  namespace: workshop
+spec:
+  services:
+    # Frontend: Receives HTTP requests and routes to workers
+    Frontend:
+      componentType: frontend
+      replicas: 1
+      extraPodSpec:
+        nodeSelector:
+          node.kubernetes.io/instance-type: p4d.24xlarge  # Change to your GPU instance type
+        mainContainer:
+          image: nvcr.io/nvidia/ai-dynamo/vllm-runtime:0.9.0
+
+    # Worker: Runs vLLM inference with the coding model
+    QwenCoderWorker:
+      componentType: worker
+      replicas: 1
+      # Optional: uncomment if using a gated model
+      # envFromSecret: hf-token-secret
+      resources:
+        requests:
+          gpu: "1"
+          memory: "40Gi"
+        limits:
+          gpu: "1"
+          memory: "80Gi"
+      extraPodSpec:
+        nodeSelector:
+          node.kubernetes.io/instance-type: p4d.24xlarge  # Change to your GPU instance type
+        mainContainer:
+          image: nvcr.io/nvidia/ai-dynamo/vllm-runtime:0.9.0
+          workingDir: /workspace/examples/backends/vllm
+          command:
+            - python3
+            - -m
+            - dynamo.vllm
+          args:
+            - --model
+            - Qwen/Qwen2.5-Coder-7B-Instruct
+            - --trust-remote-code
+            - --max-model-len
+            - "8192"
+            - --gpu-memory-utilization
+            - "0.85"
+            - --dtype
+            - bfloat16

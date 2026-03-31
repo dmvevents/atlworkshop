@@ -1,0 +1,62 @@
+# Dynamo DynamoGraphDeployment: Large Coding Model (32B, TP=2)
+#
+# For deploying larger coding models like:
+#   - Qwen/Qwen2.5-Coder-32B-Instruct (SWE-bench base)
+#   - mistralai/Devstral-Small-2505 (SWE-bench 46.6%)
+#   - agentica-org/DeepSWE-Preview (SWE-bench 59.0%)
+#
+# Requires: 2x GPU (tensor parallelism), HuggingFace token for some models
+#
+# Usage:
+#   kubectl apply -f 02-hf-token-secret.yaml  # Required for large models
+#   kubectl apply -f 04-dynamo-large-model.yaml
+#
+apiVersion: nvidia.com/v1alpha1
+kind: DynamoGraphDeployment
+metadata:
+  name: coding-model-large
+  namespace: workshop
+spec:
+  services:
+    Frontend:
+      componentType: frontend
+      replicas: 1
+      extraPodSpec:
+        nodeSelector:
+          node.kubernetes.io/instance-type: p4d.24xlarge
+        mainContainer:
+          image: nvcr.io/nvidia/ai-dynamo/vllm-runtime:0.9.0
+
+    LargeModelWorker:
+      componentType: worker
+      replicas: 1
+      envFromSecret: hf-token-secret
+      resources:
+        requests:
+          gpu: "2"
+          memory: "80Gi"
+        limits:
+          gpu: "2"
+          memory: "160Gi"
+      extraPodSpec:
+        nodeSelector:
+          node.kubernetes.io/instance-type: p4d.24xlarge
+        mainContainer:
+          image: nvcr.io/nvidia/ai-dynamo/vllm-runtime:0.9.0
+          workingDir: /workspace/examples/backends/vllm
+          command:
+            - python3
+            - -m
+            - dynamo.vllm
+          args:
+            - --model
+            - Qwen/Qwen2.5-Coder-32B-Instruct    # Change to your model
+            - --trust-remote-code
+            - --tensor-parallel-size
+            - "2"
+            - --max-model-len
+            - "8192"
+            - --gpu-memory-utilization
+            - "0.90"
+            - --dtype
+            - bfloat16
