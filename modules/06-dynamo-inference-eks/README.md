@@ -542,6 +542,36 @@ curl -N http://localhost:8000/v1/chat/completions \
 | **KV Transfer Latency** | NIXL RDMA transfer from prefill to decode | < 10 ms for 500 MB cache |
 | **Throughput** | Tokens generated per second across all requests | Workload-dependent |
 
+### Benchmarking with NVIDIA AIPerf
+
+AIPerf is NVIDIA's official benchmarking tool for LLM inference (successor to GenAI-Perf).
+It comes pre-installed in Dynamo containers at `/opt/dynamo/venv/bin/aiperf`.
+
+```bash
+# Run from inside a Dynamo frontend pod
+kubectl exec -n workshop <frontend-pod> -- \
+  /opt/dynamo/venv/bin/aiperf profile \
+  -m "Qwen/Qwen2.5-Coder-7B-Instruct" \
+  --endpoint-type chat \
+  --streaming \
+  -u "http://localhost:8000" \
+  --concurrency 4 \
+  --request-count 20 \
+  --synthetic-input-tokens-mean 128 \
+  --output-tokens-mean 64 \
+  --use-legacy-max-tokens \
+  --artifact-dir /tmp/aiperf-results
+```
+
+**Workshop benchmark results (A100 40GB, Qwen2.5-Coder-7B):**
+
+| Metric | Concurrency=1 | Concurrency=4 |
+|--------|---------------|---------------|
+| TTFT (avg) | 46.81 ms | 52.19 ms |
+| ITL (avg) | 12.36 ms | 12.97 ms |
+| Throughput | 77 tok/s | 282 tok/s |
+| Req/s | 1.25 | 4.59 |
+
 ### Benchmarking with curl Timing
 
 ```bash

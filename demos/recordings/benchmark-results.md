@@ -5,29 +5,31 @@
 **Hardware:** 1x NVIDIA A100 40GB (P4d.24xlarge)
 **Backend:** vLLM via NVIDIA Dynamo v0.9.0
 **Deployment:** DynamoGraphDeployment (Frontend + Worker)
+**Benchmark Tool:** NVIDIA AIPerf (successor to GenAI-Perf)
 
-### GenAI-Perf Results (Concurrency=1)
-
-| Metric | avg | min | max | p99 | p90 | p75 |
-|--------|-----|-----|-----|-----|-----|-----|
-| Time To First Token (ms) | 49.36 | 42.54 | 75.80 | 73.96 | 57.36 | 50.61 |
-| Time To Second Token (ms) | 2.57 | 0.00 | 13.72 | 12.83 | 4.87 | 3.37 |
-| Request Latency (ms) | 822.14 | 734.19 | 884.13 | 882.17 | 864.51 | 837.00 |
-| Inter Token Latency (ms) | 12.40 | 12.20 | 12.87 | 12.86 | 12.83 | 12.47 |
-| Output Token Throughput/User (tok/s) | 80.65 | 77.72 | 81.97 | 81.97 | 81.96 | 81.57 |
-| Output Sequence Length (tokens) | 63.30 | 57.00 | 64.00 | 64.00 | 64.00 | 64.00 |
-| Input Sequence Length (tokens) | 131.00 | 114.00 | 140.00 | 139.91 | 139.10 | 137.00 |
-| Output Token Throughput (tok/s) | 76.80 | — | — | — | — | — |
-| Request Throughput (req/s) | 1.21 | — | — | — | — | — |
-
-### GenAI-Perf Results (Concurrency=4)
+### AIPerf Results (Concurrency=1)
 
 | Metric | avg | min | max | p99 | p90 | p75 |
 |--------|-----|-----|-----|-----|-----|-----|
-| Time To First Token (ms) | 60.18 | 19.43 | 99.25 | 99.21 | 88.28 | 72.02 |
-| Inter Token Latency (ms) | 12.87 | 12.49 | 13.38 | 13.37 | 13.23 | 12.91 |
-| Output Token Throughput (tok/s) | 283.00 | — | — | — | — | — |
-| Request Throughput (req/s) | 4.61 | — | — | — | — | — |
+| Time to First Token (ms) | 46.81 | 31.08 | 68.59 | 66.89 | 51.61 | 45.01 |
+| Time to Second Token (ms) | 3.01 | 0.03 | 20.73 | 19.68 | 10.22 | 0.03 |
+| Request Latency (ms) | 797.28 | 535.94 | 861.83 | 858.94 | 832.90 | 820.56 |
+| Inter Token Latency (ms) | 12.36 | 12.16 | 12.61 | 12.61 | 12.59 | 12.30 |
+| Output Token Throughput/User (tok/s) | 80.94 | 79.28 | 82.27 | 82.23 | 81.92 | 81.31 |
+| Output Sequence Length (tokens) | 61.70 | 41.00 | 64.00 | 64.00 | 64.00 | 64.00 |
+| Input Sequence Length (tokens) | 122.70 | 114.00 | 133.00 | 132.82 | 131.20 | 120.00 |
+| Output Token Throughput (tok/s) | 77.04 | — | — | — | — | — |
+| Request Throughput (req/s) | 1.25 | — | — | — | — | — |
+
+### AIPerf Results (Concurrency=4)
+
+| Metric | avg | min | max | p99 | p90 | p50 |
+|--------|-----|-----|-----|-----|-----|-----|
+| Time to First Token (ms) | 52.19 | 25.26 | 69.89 | 69.88 | 69.82 | 53.88 |
+| Time to Second Token (ms) | 14.68 | 12.30 | 24.81 | 24.80 | 24.75 | 12.79 |
+| Inter Token Latency (ms) | 12.97 | 12.69 | 13.42 | 13.39 | 13.28 | 12.93 |
+| Output Token Throughput (tok/s) | 282.08 | — | — | — | — | — |
+| Request Throughput (req/s) | 4.59 | — | — | — | — | — |
 
 ### Key Observations
 
