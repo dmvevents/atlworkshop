@@ -66,3 +66,30 @@ spec:
         - --max-model-len 8192
         - --gpu-memory-utilization 0.85
 ```
+
+---
+
+## SWE-bench Verified Leaderboard (Open-Source, March 2026)
+
+### Top Open-Source Models for Software Engineering
+
+| Rank | Model | SWE-bench Verified | Parameters | GPU Memory (BF16) |
+|------|-------|--------------------|------------|-------------------|
+| 1 | KAT-Dev | 62.4% | 32B | ~64GB |
+| 2 | CoderForge-Preview | 59.4% | 32B | ~64GB |
+| 3 | DeepSWE-Preview | 59.0% | 32.8B | ~66GB |
+| 4 | Skywork-SWE-32B | 47.0% | 32B | ~64GB |
+| 5 | Devstral-Small | 46.6% | 24B | ~48GB |
+
+### Key Insight
+
+**32B SWE-specialized models outperform 70B general models** on coding tasks.
+Fine-tuning on software engineering data (code diffs, test generation, debugging)
+produces better results than raw model size.
+
+### Workshop Deployed Models
+
+| Model | Purpose | Node | Status |
+|-------|---------|------|--------|
+| Qwen2.5-Coder-7B-Instruct | Fast coding assistant, general purpose | Node 2 | Running |
+| Devstral-Small-2505 (24B) | SWE specialist, Mistral's coding model | Node 1 | Deploying |
