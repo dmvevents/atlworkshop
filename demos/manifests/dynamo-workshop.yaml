@@ -1,0 +1,146 @@
+# Dynamo Workshop Deployment - Disaggregated Inference on EKS
+# Replace <PLACEHOLDERS> before applying
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dynamo-config
+  namespace: workshop
+data:
+  MODEL_NAME: "meta-llama/Llama-3.1-8B-Instruct"
+  BACKEND: "vllm"
+  TENSOR_PARALLEL_SIZE: "1"
+  NIXL_BACKEND: "LIBFABRIC"
+  NIXL_TRANSPORT: "efa"
+  FI_PROVIDER: "efa"
+  FI_EFA_USE_DEVICE_RDMA: "1"
+  NCCL_ALGO: "Ring"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dynamo-frontend-svc
+  namespace: workshop
+spec:
+  type: ClusterIP
+  selector:
+    app: dynamo-frontend
+  ports:
+  - name: http
+    port: 8000
+    targetPort: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dynamo-frontend
+  namespace: workshop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dynamo-frontend
+  template:
+    metadata:
+      labels:
+        app: dynamo-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: <YOUR_ECR_REGISTRY>/dynamo-frontend:v0.9.0  # TODO: replace
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: dynamo-config
+        resources:
+          requests:
+            cpu: "2"
+            memory: "8Gi"
+          limits:
+            cpu: "4"
+            memory: "16Gi"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dynamo-prefill
+  namespace: workshop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dynamo-prefill
+  template:
+    metadata:
+      labels:
+        app: dynamo-prefill
+    spec:
+      containers:
+      - name: prefill
+        image: <YOUR_ECR_REGISTRY>/dynamo-worker:v0.9.0  # TODO: replace
+        env:
+        - name: WORKER_TYPE
+          value: "prefill"
+        envFrom:
+        - configMapRef:
+            name: dynamo-config
+        resources:
+          requests:
+            cpu: "8"
+            memory: "128Gi"
+            nvidia.com/gpu: "1"
+            vpc.amazonaws.com/efa: "1"
+          limits:
+            nvidia.com/gpu: "1"
+            vpc.amazonaws.com/efa: "1"
+        volumeMounts:
+        - name: shm
+          mountPath: /dev/shm
+      volumes:
+      - name: shm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 64Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dynamo-decode
+  namespace: workshop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dynamo-decode
+  template:
+    metadata:
+      labels:
+        app: dynamo-decode
+    spec:
+      containers:
+      - name: decode
+        image: <YOUR_ECR_REGISTRY>/dynamo-worker:v0.9.0  # TODO: replace
+        env:
+        - name: WORKER_TYPE
+          value: "decode"
+        envFrom:
+        - configMapRef:
+            name: dynamo-config
+        resources:
+          requests:
+            cpu: "8"
+            memory: "128Gi"
+            nvidia.com/gpu: "1"
+            vpc.amazonaws.com/efa: "1"
+          limits:
+            nvidia.com/gpu: "1"
+            vpc.amazonaws.com/efa: "1"
+        volumeMounts:
+        - name: shm
+          mountPath: /dev/shm
+      volumes:
+      - name: shm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 64Gi

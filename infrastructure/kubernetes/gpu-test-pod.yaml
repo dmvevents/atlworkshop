@@ -1,0 +1,15 @@
+# Quick GPU verification pod - use to confirm GPU access on the cluster
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gpu-test
+  namespace: workshop
+spec:
+  restartPolicy: Never
+  containers:
+  - name: gpu-test
+    image: nvcr.io/nvidia/cuda:12.6.3-base-ubuntu22.04
+    command: ["nvidia-smi"]
+    resources:
+      limits:
+        nvidia.com/gpu: 1

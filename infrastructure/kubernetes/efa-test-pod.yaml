@@ -1,0 +1,27 @@
+# EFA device verification pod - confirms EFA networking is available
+apiVersion: v1
+kind: Pod
+metadata:
+  name: efa-test
+  namespace: workshop
+spec:
+  restartPolicy: Never
+  containers:
+  - name: efa-test
+    image: nvcr.io/nvidia/cuda:12.6.3-devel-ubuntu22.04
+    command:
+    - /bin/bash
+    - -c
+    - |
+      echo "=== EFA Device Check ==="
+      ls -la /dev/infiniband/ 2>/dev/null || echo "No /dev/infiniband found"
+      echo ""
+      echo "=== fi_info (if available) ==="
+      fi_info -p efa 2>/dev/null || echo "fi_info not available in this image"
+      echo ""
+      echo "=== GPU Info ==="
+      nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
+    resources:
+      limits:
+        nvidia.com/gpu: 1
+        vpc.amazonaws.com/efa: 1

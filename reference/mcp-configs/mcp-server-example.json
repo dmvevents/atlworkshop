@@ -1,0 +1,149 @@
+{
+  "_comment": "Example MCP server configuration for Claude Code",
+  "_instructions": [
+    "MCP (Model Context Protocol) servers extend Claude Code with external tools.",
+    "Place this in .mcp.json at your project root, or in ~/.claude/.mcp.json for global config.",
+    "Each server runs as a subprocess that Claude Code communicates with via stdio or HTTP."
+  ],
+
+  "mcpServers": {
+    "code-search": {
+      "_comment": "Trigram-based code search server (e.g., Zoekt)",
+      "command": "node",
+      "args": ["/path/to/mcp-servers/code-search/index.js"],
+      "env": {
+        "SEARCH_INDEX_PATH": "/path/to/code-index",
+        "MAX_RESULTS": "50"
+      }
+    },
+
+    "web-fetch": {
+      "_comment": "Fetch web pages as markdown for AI consumption",
+      "command": "npx",
+      "args": ["-y", "@anthropic/mcp-web-fetch"],
+      "env": {
+        "USER_AGENT": "Claude-Code-Agent/1.0"
+      }
+    },
+
+    "database-query": {
+      "_comment": "Read-only database access for analysis",
+      "command": "python3",
+      "args": ["/path/to/mcp-servers/db-query/server.py"],
+      "env": {
+        "DATABASE_URL": "postgresql://readonly_user:${DB_PASSWORD}@localhost:5432/mydb",
+        "MAX_ROWS": "1000",
+        "TIMEOUT_SECONDS": "30"
+      }
+    },
+
+    "kubernetes-ops": {
+      "_comment": "Kubernetes cluster operations (read-only by default)",
+      "command": "node",
+      "args": ["/path/to/mcp-servers/k8s-ops/index.js"],
+      "env": {
+        "KUBECONFIG": "${HOME}/.kube/config",
+        "ALLOWED_NAMESPACES": "default,staging",
+        "READ_ONLY": "true"
+      }
+    },
+
+    "memory-store": {
+      "_comment": "Persistent memory/notes across sessions",
+      "command": "npx",
+      "args": ["-y", "@anthropic/mcp-memory"],
+      "env": {
+        "MEMORY_DIR": "${HOME}/.claude-memory"
+      }
+    },
+
+    "github-tools": {
+      "_comment": "GitHub API integration for issues, PRs, and code review",
+      "command": "npx",
+      "args": ["-y", "@anthropic/mcp-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    }
+  },
+
+  "_settings_example": {
+    "_comment": "Companion settings.json (place in ~/.claude/settings.json)",
+    "permissions": {
+      "allow": [
+        "Bash(git *)",
+        "Bash(gh *)",
+        "Bash(npm test *)",
+        "Bash(npx jest *)",
+        "Read",
+        "Write",
+        "Edit",
+        "Glob",
+        "Grep",
+        "mcp__code-search__search",
+        "mcp__web-fetch__fetch",
+        "mcp__memory-store__*"
+      ],
+      "deny": [
+        "Bash(rm -rf /)",
+        "Bash(curl * | sh)",
+        "mcp__database-query__write"
+      ]
+    },
+
+    "hooks": {
+      "PreToolUse": [
+        {
+          "matcher": "Edit",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "echo 'Editing file: will be reviewed'"
+            }
+          ]
+        }
+      ],
+      "PostToolUse": [
+        {
+          "matcher": "Bash",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "echo 'Command completed'"
+            }
+          ]
+        }
+      ]
+    },
+
+    "env": {
+      "PROJECT_ROOT": "/path/to/your/project",
+      "NODE_ENV": "development"
+    }
+  },
+
+  "_architecture_notes": [
+    "",
+    "MCP Server Architecture:",
+    "",
+    "  Claude Code <--stdio--> MCP Server Process",
+    "       |                       |",
+    "       |--- tool calls ------->|--- external service",
+    "       |<-- tool results ------|<-- (API, DB, search, etc.)",
+    "",
+    "Key Points:",
+    "- Each MCP server is a separate process",
+    "- Communication via stdin/stdout (stdio transport) or HTTP (SSE transport)",
+    "- Servers declare tools, resources, and prompts",
+    "- Claude Code auto-discovers available tools from connected servers",
+    "- Environment variables support ${VAR} substitution from shell env",
+    "",
+    "Security Best Practices:",
+    "- Never hardcode API keys -- use environment variable references",
+    "- Use read-only access by default for database and cluster servers",
+    "- Limit allowed namespaces/databases/paths to what's needed",
+    "- Set timeouts to prevent runaway queries",
+    "- Use the permissions.deny list to block dangerous operations",
+    ""
+  ]
+}
